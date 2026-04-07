@@ -32,7 +32,7 @@ def save_seen_ids(ids):
 def search_wallapop(query, max_price=None):
     # Usamos el feed RSS público de Wallapop (sin restricciones anti-bot)
     keyword = query.replace(" ", "+")
-    url = f"https://api.wallapop.com/api/v3/search?keywords={keyword}&order_by=newest"
+    url = f"https://es.wallapop.com/search?keywords={keyword}&order_by=newest"
     if max_price:
         url += f"&max_sale_price={max_price}"
 
