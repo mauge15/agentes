@@ -1,0 +1,44 @@
+name: Wallapop Daily Alert
+
+on:
+  schedule:
+    - cron: "0 8 * * *"   # Cada día a las 8:00 AM (hora UTC = 9:00 España invierno / 10:00 verano)
+  workflow_dispatch:        # Permite lanzarlo manualmente desde GitHub
+
+jobs:
+  search:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install requests twilio
+
+      - name: Restore seen IDs cache
+        uses: actions/cache@v4
+        with:
+          path: seen_ids.json
+          key: seen-ids-${{ github.run_id }}
+          restore-keys: seen-ids-
+
+      - name: Run scraper
+        env:
+          TWILIO_ACCOUNT_SID:    ${{ secrets.TWILIO_ACCOUNT_SID }}
+          TWILIO_AUTH_TOKEN:     ${{ secrets.TWILIO_AUTH_TOKEN }}
+          TWILIO_WHATSAPP_FROM:  ${{ secrets.TWILIO_WHATSAPP_FROM }}
+          TWILIO_WHATSAPP_TO:    ${{ secrets.TWILIO_WHATSAPP_TO }}
+        run: python wallapop_scraper.py
+
+      - name: Save seen IDs
+        uses: actions/cache/save@v4
+        if: always()
+        with:
+          path: seen_ids.json
+          key: seen-ids-${{ github.run_id }}
