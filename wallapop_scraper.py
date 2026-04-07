@@ -1,6 +1,7 @@
 import requests
 import json
 import os
+import xml.etree.ElementTree as ET
 from twilio.rest import Client
 
 # ── CONFIGURACIÓN ──────────────────────────────────────────────
@@ -29,57 +30,44 @@ def save_seen_ids(ids):
 
 
 def search_wallapop(query, max_price=None):
-    session = requests.Session()
-
-    # Primero visitamos la home para obtener cookies reales
-    session.get(
-        "https://es.wallapop.com/",
-        headers={
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-            "Accept-Language": "es-ES,es;q=0.9",
-            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-        },
-        timeout=15,
-    )
-
-    url = "https://api.wallapop.com/api/v3/general/search"
-    params = {
-        "keywords": query,
-        "filters_source": "search_box",
-        "order_by": "newest",
-        "start": 0,
-        "step": 20,
-        "language": "es_ES",
-        "country_code": "ES",
-    }
+    # Usamos el feed RSS público de Wallapop (sin restricciones anti-bot)
+    keyword = query.replace(" ", "+")
+    url = f"https://es.wallapop.com/rss?keywords={keyword}&order_by=newest"
     if max_price:
-        params["max_sale_price"] = max_price
+        url += f"&max_sale_price={max_price}"
 
     headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-        "Accept": "application/json, text/plain, */*",
-        "Accept-Language": "es-ES,es;q=0.9",
-        "Accept-Encoding": "gzip, deflate, br",
-        "Referer": "https://es.wallapop.com/",
-        "Origin": "https://es.wallapop.com",
-        "Connection": "keep-alive",
-        "Sec-Fetch-Dest": "empty",
-        "Sec-Fetch-Mode": "cors",
-        "Sec-Fetch-Site": "same-site",
-        "X-DeviceOS": "0",
+        "User-Agent": "Mozilla/5.0 (compatible; RSSReader/1.0)",
+        "Accept": "application/rss+xml, application/xml, text/xml",
     }
 
-    response = session.get(url, params=params, headers=headers, timeout=15)
+    response = requests.get(url, headers=headers, timeout=15)
     response.raise_for_status()
-    data = response.json()
+
+    root = ET.fromstring(response.content)
+    channel = root.find("channel")
 
     items = []
-    for item in data.get("search_objects", []):
+    for entry in channel.findall("item"):
+        title = entry.findtext("title", "").strip()
+        link  = entry.findtext("link", "").strip()
+        desc  = entry.findtext("description", "").strip()
+
+        # Extraer precio de la descripción (formato: "X €" o "X€")
+        price = "?"
+        import re
+        match = re.search(r"([\d.,]+)\s*€", desc)
+        if match:
+            price = match.group(1)
+
+        # Usar el link como ID único
+        item_id = link
+
         items.append({
-            "id":    item["id"],
-            "title": item["title"],
-            "price": item["price"],
-            "url":   f"https://es.wallapop.com/item/{item['web_slug']}",
+            "id":    item_id,
+            "title": title,
+            "price": price,
+            "url":   link,
         })
     return items
 
