@@ -29,6 +29,19 @@ def save_seen_ids(ids):
 
 
 def search_wallapop(query, max_price=None):
+    session = requests.Session()
+
+    # Primero visitamos la home para obtener cookies reales
+    session.get(
+        "https://es.wallapop.com/",
+        headers={
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+            "Accept-Language": "es-ES,es;q=0.9",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        },
+        timeout=15,
+    )
+
     url = "https://api.wallapop.com/api/v3/general/search"
     params = {
         "keywords": query,
@@ -36,18 +49,27 @@ def search_wallapop(query, max_price=None):
         "order_by": "newest",
         "start": 0,
         "step": 20,
+        "language": "es_ES",
+        "country_code": "ES",
     }
     if max_price:
         params["max_sale_price"] = max_price
 
     headers = {
-        "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
         "Accept": "application/json, text/plain, */*",
         "Accept-Language": "es-ES,es;q=0.9",
+        "Accept-Encoding": "gzip, deflate, br",
         "Referer": "https://es.wallapop.com/",
+        "Origin": "https://es.wallapop.com",
+        "Connection": "keep-alive",
+        "Sec-Fetch-Dest": "empty",
+        "Sec-Fetch-Mode": "cors",
+        "Sec-Fetch-Site": "same-site",
+        "X-DeviceOS": "0",
     }
 
-    response = requests.get(url, params=params, headers=headers, timeout=15)
+    response = session.get(url, params=params, headers=headers, timeout=15)
     response.raise_for_status()
     data = response.json()
 
