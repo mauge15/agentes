@@ -42,6 +42,9 @@ def search_wallapop(query, max_price=None):
     }
 
     response = requests.get(url, headers=headers, timeout=15)
+    print("STATUS:", response.status_code)
+    print("HEADERS:", response.headers)
+    print("BODY:", response.text[:500])
     response.raise_for_status()
 
     root = ET.fromstring(response.content)
